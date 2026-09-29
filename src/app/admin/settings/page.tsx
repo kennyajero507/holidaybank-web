@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { adminApi, AdminApiError } from '@/lib/adminApi';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChanges';
 import { TextField, TextArea, FormSection, FormActions } from '@/components/admin/FormControls';
@@ -179,7 +180,11 @@ export default function AdminSettingsPage() {
         <h1 className="text-3xl">Site settings</h1>
         <p className="mt-2 text-sm text-muted">
           Everything here appears on the public site: the homepage hero and slides, the values, the
-          contact block, the footer and its notice.
+          contact block, the footer and its notice. The main menu has{' '}
+          <Link href="/admin/settings/navigation" className="text-leaf-700 underline hover:text-leaf-500">
+            its own screen
+          </Link>
+          .
         </p>
       </header>
 

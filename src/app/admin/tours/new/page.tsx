@@ -5,7 +5,7 @@ import { TourForm } from '@/components/admin/TourForm';
 import { useCatalogOptions } from '@/lib/useCatalogOptions';
 
 export default function NewTourPage() {
-  const { categories, countries, destinations } = useCatalogOptions();
+  const { categories, countries, areas, destinations } = useCatalogOptions();
 
   return (
     <div>
@@ -15,7 +15,7 @@ export default function NewTourPage() {
         </Link>
       </nav>
       <h1 className="mb-7 text-3xl">New package</h1>
-      <TourForm destinations={destinations} categories={categories} countries={countries} />
+      <TourForm destinations={destinations} categories={categories} countries={countries} areas={areas} />
     </div>
   );
 }

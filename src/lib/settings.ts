@@ -7,7 +7,7 @@ const img = (file: string, alt: string): ApiImage => ({ url: `/images/${file}`, 
 /**
  * Used only when the API is unreachable, so the shell still renders with the
  * company's own details rather than an error page. Mirrors the defaults in
- * backend/apps/content/defaults.py; the API is the source of truth.
+ * apps/content/defaults.py; the API is the source of truth.
  */
 const FALLBACK: SiteSettings = {
   brand: {
@@ -94,6 +94,7 @@ const FALLBACK: SiteSettings = {
   // While the API is down we cannot know whether the admin has switched the
   // pricing notice off, so the cautious choice is to show it.
   notice: { enabled: true, text: 'Prices are per person and subject to availability at the time of booking.' },
+  navigation: [],
 };
 
 export async function getSettings(): Promise<SiteSettings> {

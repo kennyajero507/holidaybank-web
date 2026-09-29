@@ -13,7 +13,7 @@ export default function EditTourPage({ params }: { params: Promise<{ id: string 
   const { id } = use(params);
 
   const [tour, setTour] = useState<Tour | null>(null);
-  const { categories, countries, destinations } = useCatalogOptions();
+  const { categories, countries, areas, destinations } = useCatalogOptions();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -72,7 +72,7 @@ export default function EditTourPage({ params }: { params: Promise<{ id: string 
         ) : null}
       </header>
 
-      <TourForm tour={tour} destinations={destinations} categories={categories} countries={countries} />
+      <TourForm tour={tour} destinations={destinations} categories={categories} countries={countries} areas={areas} />
     </div>
   );
 }

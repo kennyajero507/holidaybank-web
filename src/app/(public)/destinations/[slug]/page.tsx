@@ -28,7 +28,9 @@ async function getDestination(slug: string): Promise<Destination | null> {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const destination = await getDestination(slug);
-  if (!destination) return { title: 'Destination not found' };
+  // Here rather than only in the page: the page renders inside the (public)
+  // loading.tsx boundary, so by then a 200 has already been streamed.
+  if (!destination) notFound();
 
   return {
     title: destination.seo?.metaTitle ?? `${destination.name}: packages and places`,

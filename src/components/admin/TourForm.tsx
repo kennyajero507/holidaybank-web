@@ -19,7 +19,7 @@ import { ItineraryEditor } from './ItineraryEditor';
 import { FormError } from './FormError';
 import { useConfirm } from './ConfirmDialog';
 import { useToast } from './Toasts';
-import type { Tour, Destination, ItineraryDay, ApiImage, Category, CountryInfo } from '@/types';
+import type { Tour, Destination, ItineraryDay, ApiImage, Category, CountryInfo, TravelArea } from '@/types';
 
 interface FormState {
   title: string;
@@ -36,6 +36,8 @@ interface FormState {
   reviewCount: string;
   destination: string;
   countries: string[];
+  /** Travel area slugs (Diani, France...), for the homepage region tabs. */
+  areas: string[];
   highlights: string[];
   inclusions: string[];
   exclusions: string[];
@@ -74,6 +76,7 @@ function toFormState(tour?: Tour): FormState {
     reviewCount: String(tour?.reviewCount ?? 0),
     destination: tour?.destination?._id ?? '',
     countries: tour?.countries ?? [],
+    areas: tour?.areas?.map((a) => a.slug) ?? [],
     highlights: tour?.highlights ?? [],
     inclusions: tour?.inclusions ?? [],
     exclusions: tour?.exclusions ?? [],
@@ -102,12 +105,15 @@ export function TourForm({
   destinations,
   categories,
   countries,
+  areas = [],
 }: {
   tour?: Tour;
   destinations: Destination[];
   /** The category tree; tours belong to its leaves. */
   categories: Category[];
   countries: CountryInfo[];
+  /** The travel area tree; tours can sit in several areas. */
+  areas?: TravelArea[];
 }) {
   // Leaves only: a tour sits in "Kenyan Safaris", never in "Safaris" itself.
   const leaves = categories.flatMap((group) =>
@@ -164,6 +170,7 @@ export function TourForm({
       rating: Number(form.rating),
       reviewCount: Number(form.reviewCount),
       countries: form.countries,
+      areas: form.areas,
       locationLabel: form.locationLabel,
       highlights: form.highlights,
       inclusions: form.inclusions,
@@ -443,6 +450,42 @@ export function TourForm({
             ))}
           </div>
         </fieldset>
+
+        {areas.length > 0 ? (
+          <fieldset>
+            <legend className="mb-1 block text-sm font-medium text-ink">Areas</legend>
+            <p className="mb-3 text-xs text-muted">
+              Where the trip goes. Drives the region tabs in the homepage packages section; tick every area it visits.
+            </p>
+            <div className="space-y-3">
+              {areas.map((group) => (
+                <div key={group.slug} className="flex flex-col gap-2 sm:flex-row sm:items-baseline">
+                  <span className="w-40 shrink-0 text-xs uppercase tracking-wider text-muted">{group.name}</span>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {(group.children ?? []).map((area) => (
+                      <label key={area.slug} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.areas.includes(area.slug)}
+                          onChange={(e) =>
+                            set(
+                              'areas',
+                              e.target.checked
+                                ? [...form.areas, area.slug]
+                                : form.areas.filter((x) => x !== area.slug)
+                            )
+                          }
+                          className="h-4 w-4 accent-gold-500"
+                        />
+                        {area.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
 
         {isSafari ? (
           <CheckboxField

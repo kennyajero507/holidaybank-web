@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageBanner } from '@/components/ui/PageBanner';
+import { CardGridSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { DestinationCard } from '@/components/destinations/DestinationCard';
 import { DestinationFilters } from '@/components/destinations/DestinationFilters';
 import { IconicExperiences } from '@/components/destinations/IconicExperiences';
@@ -18,13 +20,13 @@ export const metadata: Metadata = {
     'Kenya, Tanzania, Uganda and Rwanda for safaris and getaways; France, Greece, Italy, Switzerland and Spain for European holidays.',
 };
 
+/**
+ * The banner renders straight away and the destination grids stream in behind
+ * a skeleton. This was a route-level loading.tsx, which also wrapped
+ * /destinations/[slug] and made its 404s answer 200.
+ */
 export default async function DestinationsPage() {
-  const [{ items }, settings] = await Promise.all([
-    apiListSafe<Destination>('/api/destinations?limit=50', { tags: [TAGS.destinations] }),
-    getSettings(),
-  ]);
-  const banner = settings.pages.destinations;
-  const regions = Array.from(new Map(items.map((d) => [d.region, d.regionLabel])).entries());
+  const banner = (await getSettings()).pages.destinations;
 
   return (
     <>
@@ -37,7 +39,31 @@ export default async function DestinationsPage() {
           { href: '/destinations', label: 'Destinations' },
         ]}
       />
+      <Suspense fallback={<DestinationsSkeleton />}>
+        <DestinationListing />
+      </Suspense>
+    </>
+  );
+}
 
+function DestinationsSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading destinations" className="container-page py-16">
+      <div className="mb-12 flex flex-col items-center gap-4">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-9 w-full max-w-md" />
+      </div>
+      <CardGridSkeleton count={6} />
+    </div>
+  );
+}
+
+async function DestinationListing() {
+  const { items } = await apiListSafe<Destination>('/api/destinations?limit=50', { tags: [TAGS.destinations] });
+  const regions = Array.from(new Map(items.map((d) => [d.region, d.regionLabel])).entries());
+
+  return (
+    <>
       {items.length === 0 ? (
         <section className="bg-cream-100 py-16">
           <div className="container-page">

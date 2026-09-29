@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { telHref, secondaryNumber } from '@/lib/format';
@@ -11,7 +12,8 @@ export interface NavItem {
   label: string;
   /** Query fragment that marks this item active on /tours, e.g. "category=safaris". */
   match?: string;
-  items?: Array<{ href: string; label: string }>;
+  /** Dropdown links; a thumbnail, when set, is decorative beside the label. */
+  items?: Array<{ href: string; label: string; image?: { url: string } }>;
 }
 
 /**
@@ -102,31 +104,33 @@ export function Header({
         </Link>
 
         <nav ref={navRef} className="hidden items-center gap-0.5 xl:flex" aria-label="Primary">
-          {nav.map((item) => {
+          {nav.map((item, index) => {
             const active = isActive(item);
+            // Labels and links are admin-arranged, so neither is guaranteed unique.
+            const key = `${index}-${item.label}`;
             const pill = `rounded-full px-3.5 py-2.5 text-[0.86rem] transition-colors ${
               active ? 'bg-cream-100 font-medium text-charcoal-950' : 'text-cream-100/90 hover:text-white'
             }`;
 
             if (!item.items) {
               return (
-                <Link key={item.label} href={item.href} aria-current={active ? 'page' : undefined} className={pill}>
+                <Link key={key} href={item.href} aria-current={active ? 'page' : undefined} className={pill}>
                   {item.label}
                 </Link>
               );
             }
 
-            const isOpen = menu === item.label;
+            const isOpen = menu === key;
             return (
               <div
-                key={item.label}
+                key={key}
                 className="relative"
-                onMouseEnter={() => setMenu(item.label)}
+                onMouseEnter={() => setMenu(key)}
                 onMouseLeave={() => setMenu(null)}
               >
                 <button
                   type="button"
-                  onClick={() => setMenu(isOpen ? null : item.label)}
+                  onClick={() => setMenu(isOpen ? null : key)}
                   aria-expanded={isOpen}
                   aria-haspopup="true"
                   className={`flex items-center gap-1.5 ${pill}`}
@@ -149,14 +153,23 @@ export function Header({
                 <div hidden={!isOpen} className="absolute left-0 top-full min-w-56 pt-2.5">
                   <ul className="overflow-hidden rounded-[10px] bg-white p-2 shadow-[0_16px_34px_rgba(0,0,0,0.22)]">
                     {item.items.map((sub, i) => (
-                      <li key={sub.href}>
+                      <li key={`${i}-${sub.href}`}>
                         {i === 1 ? <div aria-hidden className="my-1 border-t border-cream-200" /> : null}
                         <Link
                           href={sub.href}
-                          className={`block rounded-md px-3 py-2.5 text-[0.86rem] transition-colors hover:bg-cream-100 hover:text-leaf-700 ${
+                          className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-[0.86rem] transition-colors hover:bg-cream-100 hover:text-leaf-700 ${
                             i === 0 ? 'font-medium text-charcoal-900' : 'text-ink'
                           }`}
                         >
+                          {sub.image ? (
+                            <Image
+                              src={sub.image.url}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 shrink-0 rounded-md object-cover"
+                            />
+                          ) : null}
                           {sub.label}
                         </Link>
                       </li>
@@ -203,15 +216,15 @@ export function Header({
         className="mx-auto mt-2 max-h-[calc(100svh-6rem)] w-full max-w-7xl overflow-y-auto rounded-3xl bg-charcoal-900 xl:hidden"
       >
         <nav className="flex flex-col px-6 py-3" aria-label="Mobile">
-          {nav.map((item) => (
-            <div key={item.label} className="border-b border-white/5 last:border-0">
-              <Link href={item.items ? item.items[0].href : item.href} className="block py-3.5 text-sm text-cream-100 hover:text-gold-400">
+          {nav.map((item, index) => (
+            <div key={`${index}-${item.label}`} className="border-b border-white/5 last:border-0">
+              <Link href={item.href} className="block py-3.5 text-sm text-cream-100 hover:text-gold-400">
                 {item.label}
               </Link>
               {item.items && item.items.length > 1 ? (
                 <ul className="-mt-1 mb-3 flex flex-wrap gap-2">
-                  {item.items.slice(1).map((sub) => (
-                    <li key={sub.href}>
+                  {item.items.slice(1).map((sub, i) => (
+                    <li key={`${i}-${sub.href}`}>
                       <Link
                         href={sub.href}
                         className="block rounded-full bg-white/10 px-3 py-1 text-xs text-cream-200 hover:bg-gold-500 hover:text-charcoal-950"

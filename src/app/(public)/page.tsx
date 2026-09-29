@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Hero } from '@/components/home/Hero';
 import { CredentialsStrip } from '@/components/home/CredentialsStrip';
 import { CategorySection } from '@/components/home/CategorySection';
+import { KenyanAreasGrid } from '@/components/home/KenyanAreasGrid';
 import { WhyUs } from '@/components/home/WhyUs';
 import { VideoSection } from '@/components/home/VideoSection';
 import { CountriesGrid } from '@/components/home/CountriesGrid';
@@ -16,7 +17,7 @@ import { ParallaxSection } from '@/components/ui/ParallaxSection';
 
 import { apiListSafe } from '@/lib/api';
 import { getSettings } from '@/lib/settings';
-import { getCategories } from '@/lib/catalog';
+import { getAreas, getCategories } from '@/lib/catalog';
 import { TAGS } from '@/lib/tags';
 import type { Tour, Destination, Testimonial, Faq, BlogPost } from '@/types';
 
@@ -33,10 +34,16 @@ const SECTION_TITLES: Record<string, string> = {
 /* International sits on the charcoal block, as it did on the original. */
 const DARK_SECTIONS = new Set(['international']);
 
+/* This line's section shows the Kenyan travel areas as portrait cards ("Where we go")
+   rather than listing its own category's tours. */
+const AREAS_SECTION = 'kenyan-packages';
+const KENYAN_AREAS = 'kenyan';
+
 export default async function HomePage() {
-  const [settings, categories, destinations, testimonials, faqs, posts] = await Promise.all([
+  const [settings, categories, areas, destinations, testimonials, faqs, posts] = await Promise.all([
     getSettings(),
     getCategories(),
+    getAreas(),
     apiListSafe<Destination>('/api/destinations?featured=true&limit=5', { tags: [TAGS.destinations, TAGS.home] }),
     apiListSafe<Testimonial>('/api/testimonials?limit=8', { tags: [TAGS.testimonials, TAGS.home] }),
     apiListSafe<Faq>('/api/faqs?limit=6', { tags: [TAGS.faqs, TAGS.home] }),
@@ -51,6 +58,7 @@ export default async function HomePage() {
       )
     )
   );
+  const kenyanAreas = areas.find((region) => region.slug === KENYAN_AREAS);
 
   return (
     <>
@@ -61,13 +69,19 @@ export default async function HomePage() {
           come before the second and third sets of cards rather than after all of them. */}
       {lines.map(({ group, tours }, i) => (
         <Fragment key={group.slug}>
-          <CategorySection
-            id={group.slug}
-            group={group}
-            tours={tours}
-            title={SECTION_TITLES[group.slug]}
-            tone={DARK_SECTIONS.has(group.slug) ? 'dark' : 'light'}
-          />
+          {/* Without the Kenyan areas (or with the API down) the section
+              falls back to its plain category listing. */}
+          {group.slug === AREAS_SECTION && kenyanAreas?.children?.length ? (
+            <KenyanAreasGrid id={group.slug} region={kenyanAreas} group={group} title={SECTION_TITLES[group.slug]} />
+          ) : (
+            <CategorySection
+              id={group.slug}
+              group={group}
+              tours={tours}
+              title={SECTION_TITLES[group.slug]}
+              tone={DARK_SECTIONS.has(group.slug) ? 'dark' : 'light'}
+            />
+          )}
           {i === 0 ? <WhyUs values={settings.values} about={settings.about} phone={settings.contact.phone} /> : null}
         </Fragment>
       ))}

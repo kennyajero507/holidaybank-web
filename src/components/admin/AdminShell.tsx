@@ -84,7 +84,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Administration',
     items: [
-      { href: '/admin/settings', label: 'Site settings', icon: 'settings', needs: 'settings.edit' },
+      { href: '/admin/settings', label: 'Site settings', icon: 'settings', exact: true, needs: 'settings.edit' },
+      { href: '/admin/settings/navigation', label: 'Navigation menu', icon: 'menu', needs: 'settings.edit' },
       { href: '/admin/users', label: 'Users', icon: 'users', needs: 'users.view' },
       { href: '/admin/roles', label: 'Roles', icon: 'roles', needs: 'users.view' },
       { href: '/admin/audit', label: 'Audit log', icon: 'audit', needs: 'audit.view' },

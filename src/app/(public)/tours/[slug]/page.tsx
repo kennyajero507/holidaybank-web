@@ -29,7 +29,9 @@ async function getTour(slug: string): Promise<Tour | null> {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const tour = await getTour(slug);
-  if (!tour) return { title: 'Package not found' };
+  // Here rather than only in the page: the page renders inside the (public)
+  // loading.tsx boundary, so by then a 200 has already been streamed.
+  if (!tour) notFound();
 
   return {
     title: tour.seo?.metaTitle ?? tour.title,

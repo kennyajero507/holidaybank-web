@@ -25,7 +25,9 @@ async function getPost(slug: string): Promise<BlogPost | null> {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: 'Article not found' };
+  // Here rather than only in the page: the page renders inside the (public)
+  // loading.tsx boundary, so by then a 200 has already been streamed.
+  if (!post) notFound();
 
   return {
     title: post.seo?.metaTitle ?? post.title,

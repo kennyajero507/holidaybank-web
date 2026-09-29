@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import type { Category, CountryInfo } from '@/types';
+import type { Category, CountryInfo, TravelArea } from '@/types';
 
 const SORTS = [
   { value: 'recommended', label: 'Recommended' },
@@ -21,10 +21,13 @@ export function TourFilters({
   total,
   categories,
   countries,
+  area,
 }: {
   total: number;
   categories: Category[];
   countries: CountryInfo[];
+  /** The travel area in the URL (?area=), reached from the homepage tabs. */
+  area?: TravelArea;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,7 +50,7 @@ export function TourFilters({
   const category = params.get('category') ?? '';
   const country = params.get('country') ?? '';
   const sort = params.get('sort') ?? 'recommended';
-  const hasFilters = Boolean(category || country || params.get('q'));
+  const hasFilters = Boolean(category || country || params.get('q') || params.get('area'));
 
   const activeGroup = categories.find(
     (g) => g.slug === category || g.children?.some((c) => c.slug === category)
@@ -92,6 +95,22 @@ export function TourFilters({
               {c.name}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {area ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted">Area</span>
+          <button
+            type="button"
+            onClick={() => setParams({ area: '' })}
+            aria-label={`Remove the ${area.name} filter`}
+            className={`${chip(true)} inline-flex items-center gap-2`}
+          >
+            {area.parent ? `${area.parent.name} · ` : ''}
+            {area.name}
+            <span aria-hidden>×</span>
+          </button>
         </div>
       ) : null}
 

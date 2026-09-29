@@ -43,6 +43,37 @@ export interface Category extends CategoryRef {
   children?: Category[];
 }
 
+/**
+ * A node in the /api/areas tree: a regional group (Kenyan, Europe, Africa,
+ * Asia & Middle East) or an area within one (Diani, France...). Independent of
+ * categories; a tour can sit in several areas.
+ */
+export interface TravelArea {
+  _id: string;
+  id: string;
+  name: string;
+  slug: string;
+  /** Short teaser, shown on the homepage portrait cards. */
+  description: string;
+  /** Label above the card title, e.g. "Locals / Kenya". */
+  tag: string;
+  image: ApiImage | null;
+  /** How many destination places (parks, beaches, towns) the area covers. */
+  placeCount: number;
+  parent: { slug: string; name: string } | null;
+  order: number;
+  status: Status;
+  isSample: boolean;
+  tourCount?: number;
+  children?: TravelArea[];
+}
+
+export interface TravelAreaRef {
+  slug: string;
+  name: string;
+  group: { slug: string; name: string } | null;
+}
+
 export interface CountryInfo {
   _id: string;
   id: string;
@@ -85,6 +116,8 @@ export interface Tour {
   reviewCount: number;
   destination?: (Pick<Destination, '_id' | 'name' | 'slug' | 'country'> & { heroImage?: ApiImage }) | null;
   countries: Country[];
+  /** Travel areas this tour visits; empty for tours not yet placed. */
+  areas?: TravelAreaRef[];
   /** The card's place line from the original site, e.g. "Diani, Coast". */
   locationLabel?: string | null;
   highlights: string[];
@@ -299,6 +332,43 @@ export interface SiteSettings {
   pages: Record<PageKey, { title: string; subtitle: string; image: ApiImage }>;
   /** Site-wide disclaimer shown in the footer, e.g. while prices are placeholders. */
   notice: { enabled: boolean; text: string };
+  /**
+   * The public menu as arranged in the dashboard. Empty means automatic: the
+   * menu is built from the category tree (see lib/navigation.ts).
+   */
+  navigation: NavMenuItem[];
+}
+
+/** A dropdown link in the arranged menu. The thumbnail is decorative. */
+export interface NavMenuLink {
+  id: string;
+  label: string;
+  href: string;
+  visible: boolean;
+  image?: { url: string; alt?: string } | null;
+}
+
+/** A catalogue record a menu item follows: its name, route and dropdown come from it. */
+export interface NavSource {
+  type: 'category' | 'area' | 'destination';
+  slug: string;
+}
+
+/**
+ * A top-level entry in the arranged menu; with children it opens a dropdown.
+ * With a `source` it is linked: a blank label inherits the record's name, and
+ * the route and dropdown are derived from the live catalogue (lib/navigation.ts),
+ * so `href` and `children` are unused.
+ */
+export interface NavMenuItem {
+  id: string;
+  label: string;
+  href: string;
+  visible: boolean;
+  children: NavMenuLink[];
+  source?: NavSource | null;
+  /** Linked items only: show the derived dropdown. Defaults to true. */
+  showChildren?: boolean;
 }
 
 export type PageKey = 'tours' | 'destinations' | 'services' | 'about' | 'contact' | 'blog' | 'credits';

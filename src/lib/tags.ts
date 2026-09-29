@@ -1,7 +1,7 @@
 /**
  * Cache tag vocabulary shared with the Django API, which POSTs these strings
  * to /api/revalidate after any admin write. Keep in step with the `tags`
- * callbacks on each Resource in backend/apps/{catalog,content}/resources.py.
+ * callbacks on each Resource in apps/{catalog,content}/resources.py.
  */
 export const TAGS = {
   home: 'home',
