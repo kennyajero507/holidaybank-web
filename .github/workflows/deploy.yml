@@ -29,17 +29,10 @@ jobs:
           API_INTERNAL_URL: https://api.holidaybankexpeditions.com
         run: npm run build
 
-      - name: Deploy Files to Server via SSH
-        uses: appleboy/rsync-action@v0.1.10
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: ".next, public, app.js, next.config.js, package.json"
-          target: "/home/holiday2/holidaybank-web"
-          delete: false
+      - name: Package Build Artifacts
+        run: tar -czf deploy.tar.gz .next public app.js next.config.js package.json
 
-      - name: Restart Passenger App
+      - name: Copy and Extract via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -47,4 +40,25 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /home/holiday2/holidaybank-web
+            mkdir -p staging_deploy
+
+      - name: Upload Tarball
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy.tar.gz"
+          target: "/home/holiday2/holidaybank-web/staging_deploy"
+
+      - name: Extract and Restart Passenger
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/holiday2/holidaybank-web
+            tar -xzf staging_deploy/deploy.tar.gz -C .
+            rm -rf staging_deploy
             mkdir -p tmp && touch tmp/restart.txt
