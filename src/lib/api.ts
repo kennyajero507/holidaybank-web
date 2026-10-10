@@ -1,8 +1,31 @@
 import type { ApiSuccess, PageMeta } from '@/types';
 import { DEFAULT_REVALIDATE } from './tags';
 
+const LOOPBACK = ['localhost', '127.0.0.1'];
+
+/**
+ * In development the site may be opened as localhost:3000 or 127.0.0.1:3000.
+ * The admin cookie belongs to whichever host the API was called on, and the
+ * middleware only sees it if that is the host the site is on too, so in the
+ * browser a loopback API follows the page's own hostname.
+ */
+function alignLoopback(url: string): string {
+  if (typeof window === 'undefined') return url;
+  try {
+    const api = new URL(url);
+    const here = window.location.hostname;
+    if (api.hostname !== here && LOOPBACK.includes(api.hostname) && LOOPBACK.includes(here)) {
+      api.hostname = here;
+      return api.toString().replace(/\/+$/, '');
+    }
+  } catch {
+    // A malformed URL is reported by the first fetch, more clearly than here.
+  }
+  return url;
+}
+
 /** The API as the browser reaches it. */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_URL = alignLoopback(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000');
 
 /**
  * The API as the Next.js server reaches it. The same as API_URL except where

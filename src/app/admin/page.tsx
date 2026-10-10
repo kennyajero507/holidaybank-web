@@ -290,7 +290,7 @@ export default async function AdminDashboardPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{t.title}</p>
                       <p className="truncate text-xs text-muted">
-                        {t.durationDays}d · {t.countries?.join(', ')}
+                        {[t.durationDays != null ? `${t.durationDays}d` : null, t.countries?.join(', ')].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                     <StatusPill status={t.status} />

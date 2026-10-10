@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Category, SiteSettings } from '@/types';
+import type { Category, CmsPage, SiteSettings } from '@/types';
 import { telHref, whatsappHref, secondaryNumber } from '@/lib/format';
 import { NewsletterForm } from './NewsletterForm';
 import { SOCIAL_LABELS, type SocialKey } from '@/components/ui/SocialIcon';
@@ -13,20 +13,31 @@ const COMPANY = [
 ];
 
 /** The original site's footer: brand and blurb, Explore, Company, Get in touch. */
-export function Footer({ settings, categories }: { settings: SiteSettings; categories: Category[] }) {
+export function Footer({
+  settings,
+  categories,
+  pages = [],
+}: {
+  settings: SiteSettings;
+  categories: Category[];
+  /** Published pages ticked "Show in footer" (FAQs, Privacy Policy...), after the fixed links. */
+  pages?: CmsPage[];
+}) {
   const { contact, socials, newsletter, footerBlurb, notice, brand } = settings;
   const secondNumber = secondaryNumber(contact.phone, contact.whatsapp);
   const year = new Date().getFullYear();
   const activeSocials = Object.entries(socials ?? {}).filter(([, url]) => Boolean(url));
 
+  const company = [
+    ...COMPANY,
+    ...pages
+      .filter((p) => !COMPANY.some((c) => c.href === `/${p.slug}`))
+      .map((p) => ({ href: `/${p.slug}`, label: p.seo?.metaTitle || p.title })),
+  ];
+
   // Destinations belongs with the product lines, not under Company.
   const explore = [
-    ...categories.flatMap((group) => [
-      { href: `/tours?category=${group.slug}`, label: group.navLabel || group.name },
-      ...(group.children ?? [])
-        .filter((child) => (child.navLabel || child.name) !== (group.navLabel || group.name))
-        .map((child) => ({ href: `/tours?category=${child.slug}`, label: child.navLabel || child.name, nested: true })),
-    ]),
+    ...categories.map((group) => ({ href: `/tours?category=${group.slug}`, label: group.navLabel || group.name })),
     { href: '/destinations', label: 'Destinations' },
   ];
 
@@ -60,10 +71,7 @@ export function Footer({ settings, categories }: { settings: SiteSettings; categ
           <ul className="space-y-2.5 text-sm">
             {explore.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`transition-colors hover:text-gold-400 ${'nested' in item ? 'pl-3 text-[0.86rem] text-[#b8b2a0]' : ''}`}
-                >
+                <Link href={item.href} className="transition-colors hover:text-gold-400">
                   {item.label}
                 </Link>
               </li>
@@ -74,7 +82,7 @@ export function Footer({ settings, categories }: { settings: SiteSettings; categ
         <div>
           <h3 className="mb-4 font-sans text-[0.95rem] font-medium text-white">Company</h3>
           <ul className="space-y-2.5 text-sm">
-            {COMPANY.map((item) => (
+            {company.map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className="transition-colors hover:text-gold-400">
                   {item.label}
@@ -124,9 +132,14 @@ export function Footer({ settings, categories }: { settings: SiteSettings; categ
       </div>
 
       <div className="border-t border-[#34363b]">
-        <div className="container-page flex flex-col justify-between gap-2.5 py-6 text-[0.82rem] sm:flex-row">
+        {/* The tall bottom padding lets this line scroll clear of the floating
+            WhatsApp and contact buttons, which would otherwise cover it. */}
+        <div className="container-page flex flex-col justify-between gap-2.5 pb-24 pt-6 text-[0.82rem] sm:flex-row">
           <p>
-            © {year} {brand.name}. All rights reserved.
+            © {year} {brand.name}. All rights reserved. Designed by{' '}
+            <a href="https://circlelook.com" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-gold-400">
+              Circlelook
+            </a>
           </p>
           {notice?.enabled && notice.text ? <p className="text-gold-400/80">{notice.text}</p> : <p>{brand.tagline}</p>}
         </div>

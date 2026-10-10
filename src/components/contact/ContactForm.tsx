@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_URL } from '@/lib/api';
 
 /**
  * The general enquiry form. `interests` comes from /api/enquiries/options so
@@ -32,7 +33,7 @@ export function ContactForm({ interests, defaultInterest }: { interests: string[
     };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/enquiries`, {
+      const res = await fetch(`${API_URL}/api/enquiries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

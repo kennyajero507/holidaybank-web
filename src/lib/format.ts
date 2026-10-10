@@ -30,8 +30,24 @@ export function telHref(phone: string): string {
   return phone.replace(/[^\d+]/g, '');
 }
 
-export function whatsappHref(phone: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
+/** A wa.me chat link, optionally with the first message typed in for the visitor. */
+export function whatsappHref(phone: string, text?: string): string {
+  const base = `https://wa.me/${phone.replace(/[^\d]/g, '')}`;
+  return text?.trim() ? `${base}?text=${encodeURIComponent(text.trim())}` : base;
+}
+
+/**
+ * The number WhatsApp chats go to, or null when chat is switched off in Site
+ * settings. The widget's own number wins, then the contact WhatsApp number,
+ * then the main phone line.
+ */
+export function whatsappNumber(settings: {
+  contact: { phone: string; whatsapp?: string };
+  whatsappWidget?: { enabled: boolean; number?: string };
+}): string | null {
+  if (settings.whatsappWidget && !settings.whatsappWidget.enabled) return null;
+  const number = settings.whatsappWidget?.number?.trim() || settings.contact.whatsapp?.trim() || settings.contact.phone.trim();
+  return number.replace(/\D/g, '').length >= 7 ? number : null;
 }
 
 /**

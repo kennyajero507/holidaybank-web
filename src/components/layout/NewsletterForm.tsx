@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_URL } from '@/lib/api';
 
 /**
  * Newsletter signups are stored as contact enquiries so they land in the same
@@ -16,7 +17,7 @@ export function NewsletterForm() {
     setState('sending');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/enquiries`, {
+      const res = await fetch(`${API_URL}/api/enquiries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

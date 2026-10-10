@@ -1,17 +1,13 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { TourBanner } from '@/components/tours/TourBanner';
-import { TourInfoBoxes } from '@/components/tours/TourInfoBoxes';
-import { ItineraryTimeline } from '@/components/tours/ItineraryTimeline';
-import { InclusionLists } from '@/components/tours/InclusionLists';
 import { BookingCard } from '@/components/tours/BookingCard';
-import { RelatedTourCard } from '@/components/tours/RelatedTourCard';
-import { TourMap } from '@/components/tours/TourMap';
 
-import { apiGet, apiGetSafe, ApiRequestError } from '@/lib/api';
+import { apiGet, ApiRequestError } from '@/lib/api';
 import { getSettings } from '@/lib/settings';
+import { whatsappNumber } from '@/lib/format';
 import { TAGS } from '@/lib/tags';
 import type { Tour } from '@/types';
 
@@ -56,14 +52,10 @@ export default async function TourDetailPage({ params }: { params: Params }) {
   const tour = await getTour(slug);
   if (!tour) notFound();
 
-  const [related, settings] = await Promise.all([
-    apiGetSafe<Tour[]>(`/api/tours/${slug}/related`, [], { tags: [TAGS.tours] }),
-    getSettings(),
-  ]);
+  const settings = await getSettings();
 
   const destinationName =
     typeof tour.destination === 'object' && tour.destination ? tour.destination.name : null;
-  const mapQuery = tour.parks?.[0] ?? tour.locationLabel ?? destinationName ?? tour.countries?.[0] ?? 'Kenya';
   const place = tour.locationLabel && tour.locationLabel !== destinationName ? tour.locationLabel : null;
 
   return (
@@ -85,16 +77,30 @@ export default async function TourDetailPage({ params }: { params: Params }) {
             <section>
               <Eyebrow>Overview</Eyebrow>
               <h2 className="mb-6 font-display text-2xl text-charcoal-900">About this trip</h2>
-              <TourInfoBoxes tour={tour} />
-              <p className="mt-6 text-sm leading-relaxed text-muted">{tour.description}</p>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted">{tour.description}</p>
+              {/* Every destination page this package is listed on, the primary one first. */}
+              {tour.destinations?.length ? (
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-muted">
+                    {tour.destinations.length === 1 ? 'Destination' : 'Destinations'}
+                  </span>
+                  {tour.destinations.map((d) => (
+                    <Link
+                      key={d.slug}
+                      href={`/destinations/${d.slug}`}
+                      className="rounded-full border border-cream-300 bg-white px-3 py-1 text-xs text-charcoal-900 transition-colors hover:border-gold-500"
+                    >
+                      {d.name}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </section>
 
             {tour.highlights?.length ? (
               <section>
                 <Eyebrow>Highlights</Eyebrow>
-                <h2 className="mb-5 font-display text-2xl text-charcoal-900">
-                  What you&rsquo;ll see
-                </h2>
+                <h2 className="mb-5 font-display text-2xl uppercase tracking-wide text-charcoal-900">Things to do</h2>
                 <ul className="grid gap-3 sm:grid-cols-2">
                   {tour.highlights.map((h) => (
                     <li
@@ -110,72 +116,6 @@ export default async function TourDetailPage({ params }: { params: Params }) {
                 </ul>
               </section>
             ) : null}
-
-            {tour.gallery?.length ? (
-              <section>
-                <Eyebrow>Gallery</Eyebrow>
-                <h2 className="mb-5 font-display text-2xl text-charcoal-900">In pictures</h2>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {tour.gallery.map((image) => (
-                    <figure key={image.url} className="relative aspect-[4/3] overflow-hidden rounded-[2px]">
-                      <Image
-                        src={image.url}
-                        alt={image.alt}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        className="object-cover transition-transform duration-700 ease-soft hover:scale-105"
-                      />
-                      {image.credit ? (
-                        <figcaption className="absolute bottom-1 right-2 text-[0.6rem] text-white/70">
-                          {image.credit}
-                        </figcaption>
-                      ) : null}
-                    </figure>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {tour.itinerary?.length ? (
-              <section>
-                <Eyebrow>Itinerary</Eyebrow>
-                <h2 className="mb-6 font-display text-2xl text-charcoal-900">Day-by-day journey</h2>
-                <ItineraryTimeline days={tour.itinerary} location={destinationName} />
-              </section>
-            ) : null}
-
-            <section>
-              <InclusionLists inclusions={tour.inclusions} exclusions={tour.exclusions} />
-            </section>
-
-            <section>
-              <Eyebrow>Booking</Eyebrow>
-              <h2 className="mb-4 font-display text-2xl text-charcoal-900">How booking works</h2>
-              <div className="space-y-3 text-sm leading-relaxed text-muted">
-                <p>
-                  Send a request with your dates and group size. We confirm availability and send a
-                  written quote; nothing is paid until you accept it.
-                </p>
-                <p>
-                  The price shown is from {tour.priceBasis}. Your quote reflects your dates, room type
-                  and group size.
-                  {tour.visaSupport ? ' Visa application support is included for this trip.' : ''}
-                </p>
-                <p className="text-xs">
-                  Payment and cancellation terms are set out in the written quote before any money
-                  changes hands.
-                </p>
-              </div>
-            </section>
-
-            <section>
-              <Eyebrow>Where you will travel</Eyebrow>
-              <h2 className="mb-5 font-display text-2xl text-charcoal-900">On the map</h2>
-              <TourMap query={mapQuery} title={tour.title} />
-              {tour.parks?.length ? (
-                <p className="mt-3 text-xs text-muted">{tour.parks.join(' · ')}</p>
-              ) : null}
-            </section>
           </div>
 
           {/* ---------- sticky booking sidebar ---------- */}
@@ -183,27 +123,12 @@ export default async function TourDetailPage({ params }: { params: Params }) {
             <BookingCard
               tourId={tour._id}
               tourTitle={tour.title}
-              priceFrom={tour.priceFrom}
-              currency={tour.currency}
               phone={settings.contact.phone}
-              priceBasis={tour.priceBasis}
+              whatsapp={whatsappNumber(settings)}
             />
           </aside>
         </div>
       </div>
-
-      {related.length > 0 ? (
-        <section className="bg-white py-14">
-          <div className="container-page">
-            <h2 className="mb-6 font-display text-2xl text-charcoal-900">You might also like</h2>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-              {related.map((r) => (
-                <RelatedTourCard key={r._id} tour={r} />
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
     </>
   );
 }

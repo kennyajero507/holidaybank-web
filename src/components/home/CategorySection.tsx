@@ -8,7 +8,8 @@ import type { Category, Tour } from '@/types';
  * sections: eyebrow, heading and intro, then a grid of package cards. When the
  * line has more than one child (Safaris), each child gets its own sub-heading
  * with a rule, as the original did for "Kenyan Safaris" and
- * "Kenya · Tanzania · Uganda · Rwanda".
+ * "Kenya · Tanzania · Uganda · Rwanda"; `flat` keeps the line as one grid
+ * instead (International).
  */
 export function CategorySection({
   group,
@@ -16,8 +17,16 @@ export function CategorySection({
   tone = 'light',
   id,
   title,
+  flat = false,
+  limit = 4,
+  href,
 }: {
   title?: string;
+  flat?: boolean;
+  /** Cards shown when the line is one grid. */
+  limit?: number;
+  /** Where "View all" leads, when not to the line's own category. */
+  href?: string;
   group: Category;
   tours: Tour[];
   tone?: 'light' | 'dark';
@@ -27,7 +36,7 @@ export function CategorySection({
   const dark = tone === 'dark';
   const children = group.children ?? [];
   const subgroups =
-    children.length > 1
+    !flat && children.length > 1
       ? children
           .map((child) => ({ child, items: tours.filter((t) => t.category === child.slug) }))
           .filter((s) => s.items.length > 0)
@@ -48,7 +57,7 @@ export function CategorySection({
               <p className={`mt-3.5 leading-relaxed ${dark ? 'text-[#b8b2a0]' : 'text-muted'}`}>{group.description}</p>
             ) : null}
           </div>
-          <ButtonLink href={`/tours?category=${group.slug}`} variant={dark ? 'outline-light' : 'outline'} className="shrink-0 self-start md:self-auto">
+          <ButtonLink href={href ?? `/tours?category=${group.slug}`} variant={dark ? 'outline-light' : 'outline'} className="shrink-0 self-start md:self-auto">
             View all {group.tourCount ? `${group.tourCount} ` : ''}
             {group.kind === 'safari' ? 'safaris' : 'packages'} →
           </ButtonLink>
@@ -66,7 +75,7 @@ export function CategorySection({
           ))
         ) : (
           // One row per line on the homepage; "View all" leads to the rest.
-          <Grid tours={tours.slice(0, 4)} tone={tone} />
+          <Grid tours={tours.slice(0, limit)} tone={tone} />
         )}
       </div>
     </section>

@@ -19,7 +19,7 @@ import { apiListSafe } from '@/lib/api';
 import { getSettings } from '@/lib/settings';
 import { getAreas, getCategories } from '@/lib/catalog';
 import { TAGS } from '@/lib/tags';
-import type { Tour, Destination, Testimonial, Faq, BlogPost } from '@/types';
+import type { Category, Tour, Destination, Testimonial, Faq, BlogPost } from '@/types';
 
 /*
  * Section headings from the original homepage, keyed by category slug. The
@@ -39,6 +39,41 @@ const DARK_SECTIONS = new Set(['international']);
 const AREAS_SECTION = 'kenyan-packages';
 const KENYAN_AREAS = 'kenyan';
 
+/* Everything outside Kenya and the safaris is shown as one International
+   section, however the category tree splits it (International > Europe, Asia...
+   or Europe, Africa, Asia and USA as lines of their own). */
+const INTERNATIONAL = 'international';
+const INTERNATIONAL_CARDS = 8;
+
+type Line = { group: Category; tours: Tour[]; href?: string };
+
+function mergeInternational(lines: Line[]): Line[] {
+  const abroad = lines.filter((line) => line.group.kind === INTERNATIONAL);
+  if (abroad.length < 2) return lines;
+
+  // Take a card from each region in turn, so the one grid is not all Europe.
+  const tours: Tour[] = [];
+  for (let i = 0; i < Math.max(...abroad.map((line) => line.tours.length)); i++) {
+    for (const line of abroad) if (line.tours[i]) tours.push(line.tours[i]);
+  }
+  const merged: Line = {
+    group: {
+      ...abroad[0].group,
+      slug: INTERNATIONAL,
+      name: 'International',
+      navLabel: 'International',
+      eyebrow: 'International',
+      description: 'Curated routes beyond Kenya, visas and flights sorted, for travellers ready to go further.',
+      tourCount: undefined,
+      children: [],
+    },
+    tours,
+    // No single category covers them all, so "View all" opens the full listing.
+    href: '/tours',
+  };
+  return lines.flatMap((line) => (line.group.kind !== INTERNATIONAL ? [line] : line === abroad[0] ? [merged] : []));
+}
+
 export default async function HomePage() {
   const [settings, categories, areas, destinations, testimonials, faqs, posts] = await Promise.all([
     getSettings(),
@@ -51,13 +86,13 @@ export default async function HomePage() {
   ]);
 
   // One request per product line, in the order the menu shows them.
-  const lines = await Promise.all(
+  const lines = mergeInternational(await Promise.all(
     categories.map((group) =>
       apiListSafe<Tour>(`/api/tours?category=${group.slug}&limit=12`, { tags: [TAGS.tours, TAGS.home] }).then(
-        ({ items }) => ({ group, tours: items })
+        ({ items }): Line => ({ group, tours: items })
       )
     )
-  );
+  ));
   const kenyanAreas = areas.find((region) => region.slug === KENYAN_AREAS);
 
   return (
@@ -67,7 +102,7 @@ export default async function HomePage() {
 
       {/* Why Holidaybank follows the first product line, so the reasons to book
           come before the second and third sets of cards rather than after all of them. */}
-      {lines.map(({ group, tours }, i) => (
+      {lines.map(({ group, tours, href }, i) => (
         <Fragment key={group.slug}>
           {/* Without the Kenyan areas (or with the API down) the section
               falls back to its plain category listing. */}
@@ -80,6 +115,9 @@ export default async function HomePage() {
               tours={tours}
               title={SECTION_TITLES[group.slug]}
               tone={DARK_SECTIONS.has(group.slug) ? 'dark' : 'light'}
+              flat={group.kind === INTERNATIONAL}
+              limit={group.kind === INTERNATIONAL ? INTERNATIONAL_CARDS : undefined}
+              href={href}
             />
           )}
           {i === 0 ? <WhyUs values={settings.values} about={settings.about} phone={settings.contact.phone} /> : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApi, AdminApiError } from '@/lib/adminApi';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChanges';
@@ -15,12 +15,29 @@ import {
 } from './FormControls';
 import { ImageUploader } from './ImageUploader';
 import { ParksEditor } from './ParksEditor';
-import { useCatalogOptions } from '@/lib/useCatalogOptions';
 import { FormError } from './FormError';
 import { useConfirm } from './ConfirmDialog';
 import { useToast } from './Toasts';
-import type { Destination, Park, ApiImage } from '@/types';
+import type { Destination, Park, ApiImage, CountryOption, Region } from '@/types';
 
+
+const REGIONS: { value: Region; label: string }[] = [
+  { value: 'east-africa', label: 'East Africa' },
+  { value: 'africa', label: 'Africa' },
+  { value: 'europe', label: 'Europe' },
+  { value: 'middle-east', label: 'Middle East' },
+  { value: 'asia', label: 'Asia' },
+  { value: 'americas', label: 'Americas' },
+  { value: 'oceania', label: 'Oceania' },
+  { value: 'other', label: 'Elsewhere' },
+];
+
+/** "kenya", " KE " and "Kenya" all find Kenya: by ISO code or by name, ignoring case. */
+function findCountry(options: CountryOption[], value: string): CountryOption | undefined {
+  const v = value.trim().toLowerCase();
+  if (!v) return undefined;
+  return options.find((o) => o.code.toLowerCase() === v || o.name.toLowerCase() === v);
+}
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -28,11 +45,20 @@ const MONTHS = [
 ];
 
 export function DestinationForm({ destination }: { destination?: Destination }) {
-  const { countries } = useCatalogOptions();
   const router = useRouter();
 
+  // Every ISO country, so a page can be made for anywhere, not just the
+  // countries already in the catalogue (which all had pages, so every choice
+  // the old dropdown offered was refused).
+  const [countryOptions, setCountryOptions] = useState<CountryOption[]>([]);
+  useEffect(() => {
+    adminApi.get<CountryOption[]>('/api/admin/countries/options').then(setCountryOptions).catch(() => setCountryOptions([]));
+  }, []);
+
   const [name, setName] = useState(destination?.name ?? '');
-  const [country, setCountry] = useState<string>(destination?.country ?? 'Kenya');
+  // The country's name as typed or picked; mapped to its ISO code on submit.
+  const [country, setCountry] = useState<string>(destination?.country ?? '');
+  const [region, setRegion] = useState<string>(destination?.region ?? '');
   const [tagline, setTagline] = useState(destination?.tagline ?? '');
   const [categoryLabel, setCategoryLabel] = useState(destination?.categoryLabel ?? 'Country');
   const [overview, setOverview] = useState(destination?.overview ?? '');
@@ -57,6 +83,7 @@ export function DestinationForm({ destination }: { destination?: Destination }) 
   const snapshot = JSON.stringify({
     name,
     country,
+    region,
     tagline,
     categoryLabel,
     overview,
@@ -90,13 +117,29 @@ export function DestinationForm({ destination }: { destination?: Destination }) 
       return;
     }
 
+    // The API takes the ISO code. Check here first, so a typo or a country
+    // that already has a page is reported on the field without a round trip.
+    const picked = findCountry(countryOptions, country);
+    if (countryOptions.length && !picked) {
+      setError('Please correct the highlighted fields.');
+      setFieldErrors({ country: country.trim() ? `"${country.trim()}" is not a country we recognise. Choose one from the list.` : 'Choose a country.' });
+      return;
+    }
+    if (picked?.destination && picked.destination.id !== destination?._id) {
+      setError('Please correct the highlighted fields.');
+      setFieldErrors({ country: `${picked.name} already has a destination page (${picked.destination.name}).` });
+      return;
+    }
+
     setSaving(true);
     setError('');
     setFieldErrors({});
 
     const body = {
       name,
-      country,
+      // If the list failed to load, send what was typed; the API accepts names too.
+      country: picked?.code ?? destination?.countryCode ?? country.trim(),
+      region: region || undefined,
       tagline: tagline || undefined,
       categoryLabel,
       overview,
@@ -190,14 +233,57 @@ export function DestinationForm({ destination }: { destination?: Destination }) 
           error={fieldErrors.name}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField
-            label="Country"
-            name="country"
-            value={country}
-            onChange={setCountry}
-            options={(countries.length ? countries.map((c) => c.name) : [country]).map((c) => ({ value: c, label: c }))}
-            required
-          />
+          <div>
+            <label htmlFor="country" className="mb-1.5 block text-sm font-medium text-ink">
+              Country <span className="text-muted">*</span>
+            </label>
+            <input
+              id="country"
+              name="country"
+              list="country-options"
+              required
+              autoComplete="off"
+              placeholder={countryOptions.length ? 'Start typing, e.g. Morocco' : 'Loading countries…'}
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                // Suggest the region for a newly picked country; the select below can change it.
+                const match = findCountry(countryOptions, e.target.value);
+                if (match && match.code !== destination?.countryCode) setRegion(match.region);
+              }}
+              aria-invalid={fieldErrors.country ? true : undefined}
+              aria-describedby={fieldErrors.country ? 'country-error' : 'country-hint'}
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none ${
+                fieldErrors.country ? 'border-maroon-600' : 'border-cream-300 focus:border-gold-500'
+              }`}
+            />
+            <datalist id="country-options">
+              {countryOptions.map((o) => (
+                <option key={o.code} value={o.name}>
+                  {o.destination && o.destination.id !== destination?._id ? `${o.code} · has a page` : o.code}
+                </option>
+              ))}
+            </datalist>
+            {fieldErrors.country ? (
+              <p id="country-error" className="mt-1 text-xs text-maroon-600">
+                {fieldErrors.country}
+              </p>
+            ) : (
+              <p id="country-hint" className="mt-1 text-xs text-muted">
+                Any country. One destination page per country.
+              </p>
+            )}
+          </div>
+          <div>
+            <SelectField
+              label="Region"
+              name="region"
+              value={region}
+              onChange={setRegion}
+              options={[{ value: '', label: 'Suggested from the country' }, ...REGIONS]}
+            />
+            <p className="mt-1 text-xs text-muted">Groups the destination on the Destinations page and in tour filters.</p>
+          </div>
           <TextField
             label="Category label"
             name="categoryLabel"

@@ -5,6 +5,11 @@ import { formatPrice, tourPlace } from '@/lib/format';
 
 /** Compact card for the "You might also like" row, lighter than the main TourCard. */
 export function RelatedTourCard({ tour }: { tour: Tour }) {
+  const facts = [
+    tour.durationLabel,
+    tour.priceFrom != null ? `from ${formatPrice(tour.priceFrom, tour.currency)}` : null,
+  ].filter(Boolean);
+
   return (
     <article className="group overflow-hidden rounded-[2px] border border-cream-200 bg-white transition-all duration-500 ease-soft hover:-translate-y-1 hover:shadow-card">
       <Link href={`/tours/${tour.slug}`} className="relative block aspect-[16/10] overflow-hidden">
@@ -29,9 +34,7 @@ export function RelatedTourCard({ tour }: { tour: Tour }) {
             {tour.title}
           </Link>
         </h3>
-        <p className="mb-3 text-xs text-muted">
-          {tour.durationLabel} · from {formatPrice(tour.priceFrom, tour.currency)}
-        </p>
+        {facts.length ? <p className="mb-3 text-xs text-muted">{facts.join(' · ')}</p> : null}
         <Link
           href={`/tours/${tour.slug}`}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-leaf-700 transition-colors hover:text-gold-600"

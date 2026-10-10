@@ -12,7 +12,7 @@ import { Reveal } from '@/components/ui/Reveal';
 import { apiListSafe } from '@/lib/api';
 import { getSettings } from '@/lib/settings';
 import { TAGS } from '@/lib/tags';
-import type { Destination } from '@/types';
+import type { Destination, Region } from '@/types';
 
 export const metadata: Metadata = {
   title: 'Destinations',
@@ -58,6 +58,15 @@ function DestinationsSkeleton() {
   );
 }
 
+/** Section copy for the regions the business has written about; any other region gets a plain heading. */
+const REGION_COPY: Partial<Record<Region, { title: string; description: string }>> = {
+  'east-africa': {
+    title: 'Safaris and getaways in East Africa',
+    description: 'Where our Kenyan packages and safaris go, from the coast to the gorilla forests.',
+  },
+  europe: { title: 'Holidays in Europe', description: 'City breaks and rail journeys, with visas and flights sorted.' },
+};
+
 async function DestinationListing() {
   const { items } = await apiListSafe<Destination>('/api/destinations?limit=50', { tags: [TAGS.destinations] });
   const regions = Array.from(new Map(items.map((d) => [d.region, d.regionLabel])).entries());
@@ -80,13 +89,9 @@ async function DestinationListing() {
             <div className="container-page">
               <SectionHeading
                 eyebrow={label}
-                title={region === 'europe' ? 'Holidays in Europe' : 'Safaris and getaways in East Africa'}
+                title={REGION_COPY[region]?.title ?? `Holidays in ${label}`}
                 tone={r % 2 ? 'light' : 'dark'}
-                description={
-                  region === 'europe'
-                    ? 'City breaks and rail journeys, with visas and flights sorted.'
-                    : 'Where our Kenyan packages and safaris go, from the coast to the gorilla forests.'
-                }
+                description={REGION_COPY[region]?.description}
               />
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {items

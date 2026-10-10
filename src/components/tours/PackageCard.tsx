@@ -1,13 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Tour } from '@/types';
-import { formatPrice, tourPlace } from '@/lib/format';
+import { tourPlace } from '@/lib/format';
 
 /**
- * The package card from the original Holidaybank site: photo, an uppercase
- * place line, title, one-line description, and a footer with the "from"
- * price per person and a "View package" link. `tone="dark"` is the variant
- * used inside the charcoal International section.
+ * The package card: photo, an uppercase place line, title, one-line
+ * description and a "View package" link. `tone="dark"` is the variant used
+ * inside the charcoal International section.
  */
 export function PackageCard({
   tour,
@@ -36,14 +35,6 @@ export function PackageCard({
           className="object-cover transition-transform duration-700 ease-soft group-hover:scale-105"
         />
         <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent from-55% to-black/35" />
-        <span className="absolute left-3 top-3 rounded-full bg-charcoal-950/85 px-2.5 py-1 text-[0.75rem] text-cream-50 backdrop-blur-sm">
-          {tour.durationLabel}
-        </span>
-        {tour.isSample ? (
-          <span className="absolute right-3 top-3 rounded-full bg-cream-100/90 px-2.5 py-1 text-[0.62rem] uppercase tracking-wider text-charcoal-900">
-            Sample
-          </span>
-        ) : null}
       </Link>
 
       <div className="flex flex-1 flex-col px-5 pb-6 pt-5">
@@ -58,12 +49,7 @@ export function PackageCard({
         </h3>
         <p className={`mb-4 flex-1 text-[0.92rem] leading-relaxed ${dark ? 'text-[#a9a394]' : 'text-muted'}`}>{tour.summary}</p>
 
-        {/* "per person" sits under the price: on one line, KSh prices left no room for the link. */}
-        <div className={`flex items-end justify-between gap-3 border-t pt-3.5 ${dark ? 'border-[#3a3c42]' : 'border-[#ece5d1]'}`}>
-          <p className={`whitespace-nowrap font-display text-[1.1rem] leading-tight ${dark ? 'text-cream-100' : 'text-ink'}`}>
-            {formatPrice(tour.priceFrom, tour.currency)}
-            <span className={`block font-sans text-[0.78rem] ${dark ? 'text-[#b8b2a0]' : 'text-muted'}`}>per person</span>
-          </p>
+        <div className={`flex justify-end border-t pt-3.5 ${dark ? 'border-[#3a3c42]' : 'border-[#ece5d1]'}`}>
           <span className={`shrink-0 whitespace-nowrap text-[0.85rem] font-medium ${dark ? 'text-gold-400' : 'text-leaf-700'}`}>
             View package →
           </span>

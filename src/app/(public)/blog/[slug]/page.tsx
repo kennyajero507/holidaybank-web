@@ -5,6 +5,7 @@ import { PageBanner } from '@/components/ui/PageBanner';
 import { BlogCard } from '@/components/blog/BlogCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { ButtonLink } from '@/components/ui/Button';
+import { Markdown } from '@/components/ui/Markdown';
 
 import { apiGet, apiListSafe, ApiRequestError } from '@/lib/api';
 import { TAGS } from '@/lib/tags';
@@ -40,62 +41,6 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       images: [{ url: post.seo?.ogImage ?? post.coverImage.url }],
     },
   };
-}
-
-/**
- * Seeded posts use a small Markdown subset (## headings, **bold**, - bullets).
- * Rendered manually rather than pulling in a full Markdown pipeline.
- */
-function renderBody(content: string) {
-  const blocks = content.trim().split(/\n{2,}/);
-
-  return blocks.map((block, i) => {
-    const trimmed = block.trim();
-
-    if (trimmed.startsWith('## ')) {
-      return (
-        <h2 key={i} className="mt-10 mb-4 text-2xl">
-          {trimmed.slice(3)}
-        </h2>
-      );
-    }
-
-    if (/^[-*] /m.test(trimmed)) {
-      const points = trimmed.split('\n').filter((l) => /^[-*] /.test(l.trim()));
-      return (
-        <ul key={i} className="my-5 space-y-2.5">
-          {points.map((point, j) => (
-            <li key={j} className="flex items-start gap-3 text-base leading-relaxed text-muted">
-              <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold-500" />
-              <span>{renderInline(point.trim().replace(/^[-*] /, ''))}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
-
-    return (
-      <p key={i} className="my-5 text-base leading-relaxed text-muted">
-        {renderInline(trimmed)}
-      </p>
-    );
-  });
-}
-
-function renderInline(text: string) {
-  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-ink">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    return part;
-  });
 }
 
 export default async function BlogPostPage({ params }: { params: Params }) {
@@ -138,7 +83,9 @@ export default async function BlogPostPage({ params }: { params: Params }) {
             {post.excerpt}
           </p>
 
-          <div>{renderBody(post.content)}</div>
+          <div>
+            <Markdown content={post.content} />
+          </div>
 
           {post.tags?.length ? (
             <div className="mt-12 flex flex-wrap gap-2 border-t border-cream-200 pt-8">

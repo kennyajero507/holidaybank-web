@@ -7,11 +7,11 @@ import { TourFilters } from '@/components/tours/TourFilters';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ButtonLink } from '@/components/ui/Button';
 import { CardGridSkeleton, Skeleton } from '@/components/ui/Skeleton';
-import { apiListSafe } from '@/lib/api';
+import { apiGetSafe, apiListSafe } from '@/lib/api';
 import { getSettings } from '@/lib/settings';
-import { flattenCategories, getAreas, getCategories, getCountries } from '@/lib/catalog';
+import { flattenCategories, getAreas, getCategories } from '@/lib/catalog';
 import { TAGS } from '@/lib/tags';
-import type { Category, Tour, TravelArea } from '@/types';
+import type { Destination, Tour, TravelArea } from '@/types';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type Query = Record<string, string | string[] | undefined>;
@@ -21,13 +21,28 @@ const one = (sp: Query, key: string) => (Array.isArray(sp[key]) ? sp[key][0] : s
 const findArea = (areas: TravelArea[], slug?: string) =>
   slug ? areas.flatMap((g) => [g, ...(g.children ?? [])]).find((a) => a.slug === slug) : undefined;
 
+/** The destination in ?destination=, for the banner and the filter chip; null when unknown. */
+const findDestination = (slug?: string) =>
+  slug
+    ? apiGetSafe<Destination | null>(`/api/destinations/${encodeURIComponent(slug)}`, null, {
+        tags: [TAGS.destinations, TAGS.destination(slug)],
+      })
+    : Promise.resolve(null);
+
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const sp = await searchParams;
   const slug = one(sp, 'category');
   const category = slug ? flattenCategories(await getCategories()).find((c) => c.slug === slug) : undefined;
   const area = category ? undefined : findArea(await getAreas(), one(sp, 'area'));
+  const destination = category || area ? null : await findDestination(one(sp, 'destination'));
   return {
-    title: category ? category.name : area ? `${area.name} packages` : 'Packages & Safaris',
+    title: category
+      ? category.name
+      : area
+        ? `${area.name} packages`
+        : destination
+          ? `Trips to ${destination.name}`
+          : 'Packages & Safaris',
     description:
       category?.description ||
       'Kenyan getaways, safari adventures across East Africa, and handpicked international escapes from Holidaybank Expeditions.',
@@ -41,7 +56,12 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
  */
 export default async function ToursPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const [settings, categories, areas] = await Promise.all([getSettings(), getCategories(), getAreas()]);
+  const [settings, categories, areas, destination] = await Promise.all([
+    getSettings(),
+    getCategories(),
+    getAreas(),
+    findDestination(one(sp, 'destination')),
+  ]);
 
   // A filtered view takes its banner from the category (or area) itself.
   const category = flattenCategories(categories).find((c) => c.slug === one(sp, 'category'));
@@ -50,7 +70,7 @@ export default async function ToursPage({ searchParams }: { searchParams: Search
 
   const page = Math.max(1, Number(one(sp, 'page') ?? 1) || 1);
   const query = new URLSearchParams({ page: String(page), limit: '12' });
-  for (const key of ['category', 'country', 'area', 'sort', 'q'] as const) {
+  for (const key of ['category', 'country', 'area', 'destination', 'sort', 'q'] as const) {
     const value = one(sp, key);
     if (value) query.set(key, value);
   }
@@ -58,15 +78,18 @@ export default async function ToursPage({ searchParams }: { searchParams: Search
   return (
     <>
       <PageBanner
-        eyebrow={category?.eyebrow ?? area?.parent?.name}
-        title={category ? category.name : area ? area.name : banner.title}
-        subtitle={category?.description || area?.description || banner.subtitle}
-        image={category?.heroImage ?? banner.image}
+        eyebrow={category?.eyebrow ?? area?.parent?.name ?? destination?.regionLabel}
+        title={category ? category.name : area ? area.name : destination ? `Trips to ${destination.name}` : banner.title}
+        subtitle={category?.description || area?.description || destination?.tagline || banner.subtitle}
+        image={category?.heroImage ?? (!category && !area ? destination?.heroImage : undefined) ?? banner.image}
         crumbs={[
           { href: '/', label: 'Home' },
           { href: '/tours', label: 'Packages' },
           ...(category ? [{ href: `/tours?category=${category.slug}`, label: category.name }] : []),
           ...(!category && area ? [{ href: `/tours?area=${area.slug}`, label: area.name }] : []),
+          ...(!category && !area && destination
+            ? [{ href: `/tours?destination=${destination.slug}`, label: destination.name }]
+            : []),
         ]}
       />
 
@@ -75,7 +98,7 @@ export default async function ToursPage({ searchParams }: { searchParams: Search
           {/* Keyed on the query so a filter change shows the skeleton again
               rather than leaving stale cards on screen. */}
           <Suspense key={query.toString()} fallback={<ListingSkeleton />}>
-            <TourListing query={query} categories={categories} area={area} />
+            <TourListing query={query} />
           </Suspense>
         </div>
       </section>
@@ -83,23 +106,12 @@ export default async function ToursPage({ searchParams }: { searchParams: Search
   );
 }
 
-async function TourListing({
-  query,
-  categories,
-  area,
-}: {
-  query: URLSearchParams;
-  categories: Category[];
-  area?: TravelArea;
-}) {
-  const [{ items, meta }, countries] = await Promise.all([
-    apiListSafe<Tour>(`/api/tours?${query.toString()}`, { tags: [TAGS.tours] }),
-    getCountries(),
-  ]);
+async function TourListing({ query }: { query: URLSearchParams }) {
+  const { items, meta } = await apiListSafe<Tour>(`/api/tours?${query.toString()}`, { tags: [TAGS.tours] });
 
   return (
     <>
-      <TourFilters total={meta?.total ?? items.length} categories={categories} countries={countries} area={area} />
+      <TourFilters total={meta?.total ?? items.length} />
 
       {items.length === 0 ? (
         <EmptyState
@@ -147,17 +159,9 @@ async function TourListing({
 function ListingSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading packages">
-      <div className="mb-10 space-y-6">
-        <div className="flex gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-11 w-36 rounded-full" />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-9 w-24 rounded-full" />
-          ))}
-        </div>
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+        <Skeleton className="h-10 w-full rounded-full sm:max-w-sm" />
+        <Skeleton className="h-10 w-48 rounded-full" />
       </div>
       <CardGridSkeleton count={9} />
     </div>

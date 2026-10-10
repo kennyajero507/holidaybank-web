@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { telHref, whatsappHref } from '@/lib/format';
+import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
 
 interface TawkApi {
   maximize?: () => void;
@@ -30,8 +31,21 @@ const TAWK_SRC = process.env.NEXT_PUBLIC_TAWK_SRC ?? '';
  *
  * The chat embed is ~200KB of third-party JS with its own cookies, so it loads
  * on the first click rather than on page load.
+ *
+ * When the WhatsApp widget is on, it owns the corner: the launcher sits above
+ * it (`stacked`) and is given no WhatsApp number, so the channel is not offered twice.
  */
-export function ContactLauncher({ phone, whatsapp, email }: { phone: string; whatsapp?: string; email: string }) {
+export function ContactLauncher({
+  phone,
+  whatsapp,
+  email,
+  stacked = false,
+}: {
+  phone: string;
+  whatsapp?: string;
+  email: string;
+  stacked?: boolean;
+}) {
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -114,7 +128,12 @@ export function ContactLauncher({ phone, whatsapp, email }: { phone: string; wha
   return (
     <div
       ref={rootRef}
-      className={`fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 transition-all duration-500 md:bottom-6 md:right-6 ${shell}`}
+      className={`fixed right-4 z-40 flex flex-col items-end gap-3 transition-all duration-500 md:right-6 ${
+        stacked
+          ? // Above the 56px WhatsApp button plus a gap, on the same safe-area baseline.
+            'bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:bottom-[calc(5.75rem+env(safe-area-inset-bottom))]'
+          : 'bottom-4 md:bottom-6'
+      } ${shell}`}
     >
       {channels.map((channel, i) => (
         <a
@@ -188,15 +207,6 @@ function MailIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden className="shrink-0">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m3 7 9 6 9-6" />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0">
-      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35z" />
-      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.37c0-4.54 3.7-8.23 8.24-8.23a8.18 8.18 0 0 1 5.82 2.42 8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.22-8.24 8.22z" />
     </svg>
   );
 }

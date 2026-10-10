@@ -4,7 +4,18 @@ export type Country = string;
 /** A category slug ("locals", "kenyan-safaris"...). Tours always belong to a leaf category. */
 export type TourCategory = string;
 export type CategoryKind = 'local' | 'international' | 'safari';
-export type Region = 'east-africa' | 'europe';
+export type Region = 'east-africa' | 'europe' | 'africa' | 'middle-east' | 'asia' | 'americas' | 'oceania' | 'other';
+
+/** One ISO 3166-1 country for the destination form (/api/admin/countries/options). */
+export interface CountryOption {
+  /** ISO 3166-1 alpha-2, e.g. "KE". */
+  code: string;
+  name: string;
+  /** The catalogue's region for it, or the suggested one for a new country. */
+  region: Region;
+  /** Its destination page, when it already has one; a country has at most one. */
+  destination: { id: string; slug: string; name: string } | null;
+}
 
 export interface ApiImage {
   url: string;
@@ -74,6 +85,13 @@ export interface TravelAreaRef {
   group: { slug: string; name: string } | null;
 }
 
+export interface TourDestinationRef {
+  slug: string;
+  name: string;
+  country: string;
+  primary: boolean;
+}
+
 export interface CountryInfo {
   _id: string;
   id: string;
@@ -103,19 +121,27 @@ export interface Tour {
   categoryInfo: CategoryRef & { group: CategoryRef | null };
   summary: string;
   description: string;
-  priceFrom: number;
+  /** Null when the package is quoted on request. */
+  priceFrom: number | null;
   currency: string;
   /** e.g. "per person". */
   priceBasis: string;
-  durationDays: number;
-  durationNights: number;
-  durationLabel: string;
+  /** Null, all three, when the package has no set length. */
+  durationDays: number | null;
+  durationNights: number | null;
+  durationLabel: string | null;
   groupSizeMax: number;
   difficulty: 'easy' | 'moderate' | 'challenging';
   rating: number;
   reviewCount: number;
   destination?: (Pick<Destination, '_id' | 'name' | 'slug' | 'country'> & { heroImage?: ApiImage }) | null;
   countries: Country[];
+  /**
+   * Every published destination page the tour visits (one per country), the
+   * primary destination first. Use these for links; `destination` is the
+   * primary one only.
+   */
+  destinations?: TourDestinationRef[];
   /** Travel areas this tour visits; empty for tours not yet placed. */
   areas?: TravelAreaRef[];
   /** The card's place line from the original site, e.g. "Diani, Coast". */
@@ -165,6 +191,8 @@ export interface Destination {
   slug: string;
   country: Country;
   countrySlug: string;
+  /** ISO 3166-1 alpha-2 code of the country. */
+  countryCode: string;
   region: Region;
   regionLabel: string;
   tagline?: string | null;
@@ -337,6 +365,8 @@ export interface SiteSettings {
    * menu is built from the category tree (see lib/navigation.ts).
    */
   navigation: NavMenuItem[];
+  /** The floating WhatsApp chat. A blank number uses contact.whatsapp, then contact.phone. */
+  whatsappWidget: { enabled: boolean; number: string; greeting: string; quickReplies: string[] };
 }
 
 /** A dropdown link in the arranged menu. The thumbnail is decorative. */
@@ -532,4 +562,112 @@ export interface CurrentAdmin {
   roleName: string | null;
   permissions: string[];
   lastLoginAt?: string | null;
+}
+
+/* ---------- editable pages (About, Contact, policies...) ---------- */
+
+export type PageTemplate = 'standard' | 'legal' | 'contact';
+
+interface SectionBase {
+  /** Client-made key so React keeps editors stable while blocks move. */
+  id?: string;
+  eyebrow?: string;
+  heading?: string;
+}
+
+/** Body text in the blog's Markdown subset. */
+export interface TextSection extends SectionBase {
+  type: 'text';
+  body: string;
+}
+
+export interface ImageTextSection extends SectionBase {
+  type: 'imageText';
+  body: string;
+  images: ApiImage[];
+  imageSide: 'left' | 'right';
+}
+
+export interface CardItem {
+  eyebrow?: string;
+  title: string;
+  body?: string;
+  href?: string;
+  linkLabel?: string;
+}
+
+export interface CardsSection extends SectionBase {
+  type: 'cards';
+  tone: 'light' | 'dark';
+  items: CardItem[];
+}
+
+/** Published FAQs from the FAQs screen; a blank group lists them all. */
+export interface FaqSection extends SectionBase {
+  type: 'faq';
+  group: '' | Faq['group'];
+}
+
+export interface CtaSection extends SectionBase {
+  type: 'cta';
+  body?: string;
+  ctaLabel: string;
+  ctaHref: string;
+  tone: 'light' | 'dark';
+}
+
+export type PageSection = TextSection | ImageTextSection | CardsSection | FaqSection | CtaSection;
+export type PageSectionType = PageSection['type'];
+
+export interface ContactEmail {
+  label: string;
+  address: string;
+}
+
+export interface ContactPhone {
+  label: string;
+  number: string;
+  whatsapp: boolean;
+}
+
+export interface ContactOffice {
+  name: string;
+  lines: string[];
+  hours?: string;
+  mapUrl?: string;
+}
+
+/** The contact template's own settings, as stored. Empty lists fall back to Site settings. */
+export interface PageContact {
+  emails: ContactEmail[];
+  phones: ContactPhone[];
+  offices: ContactOffice[];
+  hours: string;
+  socials: SiteSettings['socials'];
+  showForm: boolean;
+  formHeading: string;
+}
+
+export interface CmsPage {
+  _id: string;
+  id: string;
+  title: string;
+  slug: string;
+  template: PageTemplate;
+  eyebrow: string;
+  subtitle: string;
+  heroImage: ApiImage | null;
+  body: string;
+  sections: PageSection[];
+  contact: Partial<PageContact>;
+  /** Contact template only: the page's details with Site settings filling the gaps. */
+  contactDetails: PageContact | null;
+  seo?: Seo | null;
+  showInFooter: boolean;
+  order: number;
+  status: Status;
+  isSample?: boolean;
+  sourceNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

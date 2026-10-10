@@ -8,7 +8,10 @@ import { SectionHeading } from '@/components/ui/SectionHeading';
 import { ButtonLink } from '@/components/ui/Button';
 import { Reveal } from '@/components/ui/Reveal';
 
+import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
 import { apiGet, apiListSafe, ApiRequestError } from '@/lib/api';
+import { whatsappHref, whatsappNumber } from '@/lib/format';
+import { getSettings } from '@/lib/settings';
 import { TAGS } from '@/lib/tags';
 import type { Destination, Tour } from '@/types';
 
@@ -48,10 +51,13 @@ export default async function DestinationDetailPage({ params }: { params: Params
   const destination = await getDestination(slug);
   if (!destination) notFound();
 
-  const { items: tours } = await apiListSafe<Tour>(
-    `/api/tours?country=${encodeURIComponent(destination.countrySlug)}&limit=8`,
-    { tags: [TAGS.tours] }
-  );
+  const [{ items: tours }, settings] = await Promise.all([
+    apiListSafe<Tour>(`/api/tours?destination=${encodeURIComponent(destination.slug)}&limit=8`, {
+      tags: [TAGS.tours],
+    }),
+    getSettings(),
+  ]);
+  const whatsapp = whatsappNumber(settings);
 
   return (
     <>
@@ -75,12 +81,24 @@ export default async function DestinationDetailPage({ params }: { params: Params
             <p className="text-base leading-relaxed text-muted">{destination.overview}</p>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href={`/tours?country=${encodeURIComponent(destination.country)}`}>
+              <ButtonLink href={`/tours?destination=${destination.slug}`}>
                 {destination.name} packages
               </ButtonLink>
               <ButtonLink href="/contact" variant="ghost">
                 Ask us about {destination.name} →
               </ButtonLink>
+              {whatsapp ? (
+                <a
+                  href={whatsappHref(whatsapp, `Hi, I would like to plan a trip to ${destination.name}.`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#25D366] px-5 py-2.5 text-sm font-medium text-[#128C7E] transition-colors hover:bg-[#25D366] hover:text-white"
+                >
+                  <WhatsAppIcon size={16} />
+                  Chat on WhatsApp
+                  <span className="sr-only">(opens WhatsApp in a new tab)</span>
+                </a>
+              ) : null}
             </div>
           </div>
 
@@ -183,7 +201,7 @@ export default async function DestinationDetailPage({ params }: { params: Params
                           <span />
                         )}
                         <ButtonLink
-                          href={`/tours?country=${encodeURIComponent(destination.country)}`}
+                          href={`/tours?destination=${destination.slug}`}
                           size="sm"
                           variant="secondary"
                         >
@@ -208,7 +226,7 @@ export default async function DestinationDetailPage({ params }: { params: Params
               align="left"
               action={
                 <ButtonLink
-                  href={`/tours?country=${encodeURIComponent(destination.country)}`}
+                  href={`/tours?destination=${destination.slug}`}
                   variant="ghost"
                 >
                   View all →

@@ -69,7 +69,7 @@ function toFormState(tour?: Tour): FormState {
     priceFrom: String(tour?.priceFrom ?? ''),
     currency: tour?.currency ?? 'KES',
     durationDays: String(tour?.durationDays ?? ''),
-    durationNights: tour?.durationNights === undefined ? '' : String(tour.durationNights),
+    durationNights: tour?.durationNights == null ? '' : String(tour.durationNights),
     groupSizeMax: String(tour?.groupSizeMax ?? 7),
     difficulty: tour?.difficulty ?? 'easy',
     rating: String(tour?.rating ?? 0),
@@ -116,11 +116,22 @@ export function TourForm({
   areas?: TravelArea[];
 }) {
   // Leaves only: a tour sits in "Kenyan Safaris", never in "Safaris" itself.
+  // Drafts are listed (and labelled) so a package in one keeps its category.
+  const draft = (c: Category) => (c.status === 'draft' ? ' (draft)' : '');
   const leaves = categories.flatMap((group) =>
     group.children?.length
-      ? group.children.map((c) => ({ ...c, label: `${group.name} › ${c.name}` }))
-      : [{ ...group, label: group.name }]
+      ? group.children.map((c) => ({ ...c, label: `${group.name} › ${c.name}${draft(c)}${draft(group)}` }))
+      : [{ ...group, label: `${group.name}${draft(group)}` }]
   );
+  // Until the lists load, or if this category is somehow missing from them,
+  // the current value stays selectable rather than silently becoming blank.
+  if (tour && !leaves.some((c) => c.slug === tour.category)) {
+    leaves.push({
+      ...(tour.categoryInfo as unknown as Category),
+      slug: tour.category,
+      label: tour.categoryInfo?.group ? `${tour.categoryInfo.group.name} › ${tour.categoryInfo.name}` : tour.categoryInfo?.name ?? tour.category,
+    });
+  }
   const router = useRouter();
   const initial = useRef<FormState>(toFormState(tour));
   const [form, setForm] = useState<FormState>(() => initial.current);
@@ -142,6 +153,18 @@ export function TourForm({
   const kind = leaves.find((c) => c.slug === form.category)?.kind;
   const isSafari = kind === 'safari';
 
+  /** The primary destination's country is always visited; the API enforces it too. */
+  function chooseDestination(id: string) {
+    const country = destinations.find((d) => d._id === id)?.country;
+    setForm((f) => ({
+      ...f,
+      destination: id,
+      countries: country && !f.countries.includes(country) ? [...f.countries, country] : f.countries,
+    }));
+  }
+  // Destination pages are per country, so these are where the package will be listed.
+  const listedOn = destinations.filter((d) => form.countries.includes(d.country));
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -161,9 +184,10 @@ export function TourForm({
       title: form.title,
       summary: form.summary,
       description: form.description,
-      priceFrom: Number(form.priceFrom),
+      // Blank price or duration is saved as none: the site then leaves them off.
+      priceFrom: form.priceFrom === '' ? null : Number(form.priceFrom),
       currency: form.currency,
-      durationDays: Number(form.durationDays),
+      durationDays: form.durationDays === '' ? null : Number(form.durationDays),
       groupSizeMax: Number(form.groupSizeMax),
       order: Number(form.order),
       difficulty: form.difficulty,
@@ -292,6 +316,11 @@ export function TourForm({
             ...leaves.map((c) => ({ value: c.slug, label: c.label })),
           ]}
         />
+        {leaves.find((c) => c.slug === form.category)?.status === 'draft' ? (
+          <p className="-mt-2 text-xs text-muted">
+            This category is a draft, so it is not in the site menu or the package filters yet.
+          </p>
+        ) : null}
         {fieldErrors.category ? <p className="-mt-2 text-xs text-maroon-600">{fieldErrors.category}</p> : null}
 
         <TextField
@@ -334,7 +363,7 @@ export function TourForm({
             type="number"
             value={form.priceFrom}
             onChange={(v) => set('priceFrom', v)}
-            required
+            hint="Leave blank to show no price."
             error={fieldErrors.priceFrom}
           />
           <SelectField
@@ -353,7 +382,7 @@ export function TourForm({
             type="number"
             value={form.durationDays}
             onChange={(v) => set('durationDays', v)}
-            required
+            hint="Leave blank to show no duration."
             error={fieldErrors.durationDays}
           />
           <TextField
@@ -383,16 +412,20 @@ export function TourForm({
               { value: 'challenging', label: 'Challenging' },
             ]}
           />
-          <SelectField
-            label="Destination"
-            name="destination"
-            value={form.destination}
-            onChange={(v) => set('destination', v)}
-            options={[
-              { value: '', label: '(none)' },
-              ...destinations.map((d) => ({ value: d._id, label: d.name })),
-            ]}
-          />
+          <div>
+            <SelectField
+              label="Primary destination"
+              name="destination"
+              value={form.destination}
+              onChange={chooseDestination}
+              options={[
+                { value: '', label: '(none)' },
+                ...destinations.map((d) => ({ value: d._id, label: `${d.name}${d.status === 'draft' ? ' (draft)' : ''}` })),
+              ]}
+            />
+            <p className="mt-1 text-xs text-muted">Its country is ticked below. Used for the tour page&apos;s place line.</p>
+            {fieldErrors.destination ? <p className="mt-1 text-xs text-maroon-600">{fieldErrors.destination}</p> : null}
+          </div>
           <TextField
             label="Rating"
             name="rating"
@@ -428,7 +461,12 @@ export function TourForm({
         </div>
 
         <fieldset>
-          <legend className="mb-2 block text-sm font-medium text-ink">Countries</legend>
+          <legend className="mb-1 block text-sm font-medium text-ink">Countries visited</legend>
+          <p className="mb-3 text-xs text-muted">
+            {listedOn.length
+              ? `Listed on the ${listedOn.map((d) => d.name + (d.status === 'draft' ? ' (draft)' : '')).join(', ')} destination ${listedOn.length === 1 ? 'page' : 'pages'}.`
+              : 'Tick every country the trip visits; it is listed on each one’s destination page.'}
+          </p>
           <div className="flex flex-wrap gap-3">
             {countries.map(({ name: c }) => (
               <label key={c} className="flex cursor-pointer items-center gap-2 text-sm">

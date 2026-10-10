@@ -241,13 +241,13 @@ function AdminToursView() {
       key: 'duration',
       header: 'Duration',
       sort: { asc: 'duration-asc', desc: 'duration-asc' },
-      render: (t) => <span className="text-xs">{t.durationDays}d</span>,
+      render: (t) => <span className="text-xs">{t.durationDays != null ? `${t.durationDays}d` : '—'}</span>,
     },
     {
       key: 'price',
       header: 'From',
       sort: { asc: 'price-asc', desc: 'price-desc' },
-      render: (t) => <span className="text-xs">{formatPrice(t.priceFrom, t.currency)}</span>,
+      render: (t) => <span className="text-xs">{t.priceFrom != null ? formatPrice(t.priceFrom, t.currency) : '—'}</span>,
     },
     { key: 'status', header: 'Status', render: (t) => <StatusPill status={t.status} /> },
     {

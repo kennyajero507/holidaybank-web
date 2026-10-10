@@ -16,6 +16,8 @@ export const TAGS = {
   faqs: 'faqs',
   services: 'services',
   settings: 'settings',
+  pages: 'pages',
+  page: (slug: string) => `page:${slug}`,
 } as const;
 
 /** Public pages revalidate on this cadence even without a webhook. */

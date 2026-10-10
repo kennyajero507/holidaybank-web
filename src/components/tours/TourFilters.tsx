@@ -2,7 +2,6 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import type { Category, CountryInfo, TravelArea } from '@/types';
 
 const SORTS = [
   { value: 'recommended', label: 'Recommended' },
@@ -13,22 +12,10 @@ const SORTS = [
 ] as const;
 
 /**
- * Product-line tabs (from the category tree), a second row for the chosen
- * line's sub-categories, country chips, search and sort. Every option comes
- * from the API, so new categories and countries appear without a deploy.
+ * Search, the match count and sort. Category, area and destination filters
+ * arrive in the URL from the menu and other pages; "Clear filters" drops them.
  */
-export function TourFilters({
-  total,
-  categories,
-  countries,
-  area,
-}: {
-  total: number;
-  categories: Category[];
-  countries: CountryInfo[];
-  /** The travel area in the URL (?area=), reached from the homepage tabs. */
-  area?: TravelArea;
-}) {
+export function TourFilters({ total }: { total: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -47,93 +34,12 @@ export function TourFilters({
     [params, pathname, router]
   );
 
-  const category = params.get('category') ?? '';
-  const country = params.get('country') ?? '';
   const sort = params.get('sort') ?? 'recommended';
-  const hasFilters = Boolean(category || country || params.get('q') || params.get('area'));
-
-  const activeGroup = categories.find(
-    (g) => g.slug === category || g.children?.some((c) => c.slug === category)
-  );
-  const visibleCountries = countries.filter((c) => (c.tourCount ?? 0) > 0);
-
-  const tab = (active: boolean) =>
-    `rounded-full px-5 py-2.5 text-sm transition-all duration-300 ${
-      active ? 'bg-charcoal-900 text-cream-50' : 'border border-cream-300 bg-white text-charcoal-900 hover:border-charcoal-900'
-    }`;
-  const chip = (active: boolean) =>
-    `rounded-full px-4 py-2 text-xs uppercase tracking-wider transition-all duration-300 ${
-      active ? 'bg-gold-500 text-charcoal-950' : 'bg-cream-200 text-muted hover:bg-cream-300'
-    }`;
+  const hasFilters = Boolean(params.get('category') || params.get('country') || params.get('q') || params.get('area') || params.get('destination'));
 
   return (
-    <div className="mb-10 space-y-5">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by type of trip">
-        <button type="button" onClick={() => setParams({ category: '' })} aria-pressed={!category} className={tab(!category)}>
-          All trips
-        </button>
-        {categories.map((g) => (
-          <button
-            key={g.slug}
-            type="button"
-            onClick={() => setParams({ category: g.slug })}
-            aria-pressed={activeGroup?.slug === g.slug}
-            className={tab(activeGroup?.slug === g.slug)}
-          >
-            {g.navLabel || g.name}
-          </button>
-        ))}
-      </div>
-
-      {activeGroup && (activeGroup.children?.length ?? 0) > 1 ? (
-        <div className="flex flex-wrap gap-2" role="group" aria-label={`Filter ${activeGroup.name}`}>
-          <button type="button" onClick={() => setParams({ category: activeGroup.slug })} aria-pressed={category === activeGroup.slug} className={chip(category === activeGroup.slug)}>
-            All {activeGroup.name}
-          </button>
-          {activeGroup.children!.map((c) => (
-            <button key={c.slug} type="button" onClick={() => setParams({ category: c.slug })} aria-pressed={category === c.slug} className={chip(category === c.slug)}>
-              {c.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {area ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs uppercase tracking-wider text-muted">Area</span>
-          <button
-            type="button"
-            onClick={() => setParams({ area: '' })}
-            aria-label={`Remove the ${area.name} filter`}
-            className={`${chip(true)} inline-flex items-center gap-2`}
-          >
-            {area.parent ? `${area.parent.name} · ` : ''}
-            {area.name}
-            <span aria-hidden>×</span>
-          </button>
-        </div>
-      ) : null}
-
-      {visibleCountries.length > 0 ? (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by country">
-          <button type="button" onClick={() => setParams({ country: '' })} aria-pressed={!country} className={chip(!country)}>
-            All countries
-          </button>
-          {visibleCountries.map((c) => (
-            <button
-              key={c.slug}
-              type="button"
-              onClick={() => setParams({ country: c.name })}
-              aria-pressed={country === c.name}
-              className={chip(country === c.name)}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-cream-300 pt-5">
+    <div className="mb-10">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <form
           role="search"
           onSubmit={(e) => {

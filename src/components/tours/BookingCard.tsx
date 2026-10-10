@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { formatPrice, telHref } from '@/lib/format';
+import { telHref, whatsappHref } from '@/lib/format';
+import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
+import { API_URL } from '@/lib/api';
 
 interface BookingCardProps {
   tourId: string;
   tourTitle: string;
-  priceFrom: number;
-  currency: string;
   phone: string;
-  priceBasis?: string;
+  /** The WhatsApp chat number, or null when chat is switched off in Site settings. */
+  whatsapp?: string | null;
 }
 
 type Guests = { adults: number; children: number; infants: number };
@@ -20,7 +21,12 @@ type Tab = 'book' | 'enquiry';
  * enquiries endpoint: no payment is taken here, so "Book now" opens a
  * request rather than a transaction.
  */
-export function BookingCard({ tourId, tourTitle, priceFrom, currency, phone, priceBasis = 'per person' }: BookingCardProps) {
+export function BookingCard({
+  tourId,
+  tourTitle,
+  phone,
+  whatsapp,
+}: BookingCardProps) {
   const [tab, setTab] = useState<Tab>('book');
   const [guests, setGuests] = useState<Guests>({ adults: 2, children: 0, infants: 0 });
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
@@ -54,7 +60,7 @@ export function BookingCard({ tourId, tourTitle, priceFrom, currency, phone, pri
     };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/enquiries`, {
+      const res = await fetch(`${API_URL}/api/enquiries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -117,14 +123,6 @@ export function BookingCard({ tourId, tourTitle, priceFrom, currency, phone, pri
       </div>
 
       <form onSubmit={onSubmit} className="p-5">
-        <div className="mb-5 border-b border-cream-200 pb-4">
-          <p className="text-xs text-muted">From</p>
-          <p className="font-display text-2xl text-charcoal-900">
-            {formatPrice(priceFrom, currency)}
-            <span className="ml-1 text-xs font-normal text-muted">{priceBasis}</span>
-          </p>
-        </div>
-
         <div className="space-y-3.5">
           <Field label="Full name" name="name" placeholder="Your name" required error={fieldErrors.name} />
           <Field
@@ -205,6 +203,21 @@ export function BookingCard({ tourId, tourTitle, priceFrom, currency, phone, pri
         >
           {state === 'sending' ? 'Sending…' : tab === 'book' ? 'Book now →' : 'Send enquiry →'}
         </button>
+
+        {/* The quicker route for people who would rather not fill in a form:
+            WhatsApp opens with the tour already named. */}
+        {whatsapp ? (
+          <a
+            href={whatsappHref(whatsapp, `Hi, I am interested in booking: ${tourTitle}`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[#25D366] text-sm font-medium text-[#128C7E] transition-colors hover:bg-[#25D366] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2"
+          >
+            <WhatsAppIcon size={18} />
+            Chat on WhatsApp
+            <span className="sr-only">(opens WhatsApp in a new tab)</span>
+          </a>
+        ) : null}
 
         <a
           href={`tel:${telHref(phone)}`}

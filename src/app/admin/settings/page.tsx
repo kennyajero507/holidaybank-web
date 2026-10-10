@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { adminApi, AdminApiError } from '@/lib/adminApi';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChanges';
-import { TextField, TextArea, FormSection, FormActions } from '@/components/admin/FormControls';
+import { TextField, TextArea, ListField, FormSection, FormActions } from '@/components/admin/FormControls';
+import { whatsappNumber } from '@/lib/format';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { FormError } from '@/components/admin/FormError';
 import { useToast } from '@/components/admin/Toasts';
@@ -135,6 +136,7 @@ export default function AdminSettingsPage() {
         video: settings.video ?? {},
         footerBlurb: settings.footerBlurb,
         seo: settings.seo,
+        whatsappWidget: { ...settings.whatsappWidget, number: settings.whatsappWidget.number.trim() },
       });
       setSettings(updated);
       initial.current = JSON.stringify(updated);
@@ -484,6 +486,49 @@ export default function AdminSettingsPage() {
               onChange={(v) => patch('contact', { ...settings.contact, city: v })}
             />
           </div>
+        </FormSection>
+
+        <FormSection
+          title="WhatsApp chat"
+          description="The green chat button in the corner of every public page, and the “Chat on WhatsApp” buttons on tour and destination pages."
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.whatsappWidget.enabled}
+              onChange={(e) => patch('whatsappWidget', { ...settings.whatsappWidget, enabled: e.target.checked })}
+              className="h-4 w-4 accent-gold-500"
+            />
+            Show WhatsApp chat on the site
+          </label>
+          <TextField
+            label="Chat number"
+            name="whatsappWidget.number"
+            placeholder={settings.contact.whatsapp || settings.contact.phone}
+            hint={`Leave blank to use the WhatsApp number above, or the phone number if that is blank. Chats currently go to ${
+              whatsappNumber({ contact: settings.contact, whatsappWidget: { ...settings.whatsappWidget, enabled: true } }) ??
+              'no valid number'
+            }.`}
+            value={settings.whatsappWidget.number}
+            maxLength={LIMITS.phone}
+            error={fieldErrors['whatsappWidget.number']}
+            onChange={(v) => patch('whatsappWidget', { ...settings.whatsappWidget, number: v })}
+          />
+          <TextArea
+            label="Greeting"
+            name="whatsappWidget.greeting"
+            rows={2}
+            value={settings.whatsappWidget.greeting}
+            maxLength={300}
+            error={fieldErrors['whatsappWidget.greeting']}
+            onChange={(v) => patch('whatsappWidget', { ...settings.whatsappWidget, greeting: v })}
+          />
+          <ListField
+            label="Quick questions"
+            value={settings.whatsappWidget.quickReplies}
+            hint="One per line, up to six. Tapping one fills in the visitor's message."
+            onChange={(v) => patch('whatsappWidget', { ...settings.whatsappWidget, quickReplies: v.slice(0, 6) })}
+          />
         </FormSection>
 
         <FormSection title="Social links" description="Leave blank to hide a platform from the footer.">

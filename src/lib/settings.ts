@@ -36,7 +36,7 @@ const FALLBACK: SiteSettings = {
   values: [],
   contact: {
     phone: '+254 700 000 000',
-    whatsapp: '',
+    whatsapp: '+254 700010013',
     email: 'hello@holidaybankexpeditions.com',
     addressLine: '',
     city: 'Nairobi, Kenya',
@@ -95,6 +95,13 @@ const FALLBACK: SiteSettings = {
   // pricing notice off, so the cautious choice is to show it.
   notice: { enabled: true, text: 'Prices are per person and subject to availability at the time of booking.' },
   navigation: [],
+  // Mirrors the API default; the phone above is the fallback number.
+  whatsappWidget: {
+    enabled: true,
+    number: '',
+    greeting: 'Hi there 👋 Tell us where you would like to go and we will reply on WhatsApp.',
+    quickReplies: ['Inquire about a Safari package', 'Custom itinerary quote', 'Kenyan beach holiday', 'Visa and flights for Europe'],
+  },
 };
 
 export async function getSettings(): Promise<SiteSettings> {

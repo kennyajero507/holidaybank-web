@@ -39,6 +39,10 @@ Node 20 (`.nvmrc`). There is no test suite. `npm run build` has to pass without 
   - A top-level item with a `source` (category, area or destination slug) is linked. Its route and dropdown, and its title when the label is blank, are resolved from the live catalogue by `resolveItem()`/`toHeaderNav()` at render time, so it follows renames.
   - The public layout only fetches areas and destinations when the menu links to them.
 - Travel areas (`getAreas()`, `/api/areas`) are a regional tree (Kenyan > Diani, Europe > France…) separate from categories; a tour can be in several. The "kenyan" group's areas are the homepage's Kenyan Packages portrait cards (`KenyanAreasGrid`), and `/tours?area=` filters by them.
+- Destinations are country pages. Link to a destination's packages with `/tours?destination=<slug>`, which matches its card count; use `tour.destinations` to list every destination a tour is on.
+- Editable pages (`/api/pages`) render through `CmsPageView` (`src/components/pages/`). `/about` and `/contact` read the page with that slug and fall back to a stand-in built from Site settings (`src/lib/pageFallbacks.ts`). Every other page is served by `(public)/[slug]`, which every named route outranks. Pages ticked "Show in footer" join the footer's Company links.
+- Markdown (blog bodies, page bodies and text sections) goes through `src/components/ui/Markdown.tsx`, never raw HTML.
+- The dashboard's package form reads categories from `/api/admin/categories` (drafts included) via `useCatalogOptions`, not the public tree.
 - Types for API payloads live in `src/types/index.ts`. Records use `_id`.
 
 **Admin list-page pattern** (see `src/app/admin/tours/page.tsx`): list state (page/q/sort/status) lives in the URL via `useListParams`, and defaults are left out of the query string. Pages use `DataTable` + `ListToolbar` + `Pagination` + `BulkBar`, `useConfirm` for destructive actions, and `useToast` with Undo for status changes. Because `useSearchParams` is used, the page's default export wraps the view in `<Suspense>`.
